@@ -896,15 +896,73 @@ Proof.
   - apply cps_Seq. apply cps_While_False; [exact CVAL | exact STEP].
 Qed.
 
+Lemma cps_skip_to_cont c c' k
+      (STEP : k |- c -- !SKIP --> c') :
+  KEmpty |- c -- k --> c'.
+Proof.
+  inversion STEP; subst.
+  exact CSTEP.
+Qed.
+
+Lemma cps_stmt_to_empty_cont c c' s k
+      (STEP : k |- c -- !s --> c') :
+  KEmpty |- c -- !s @ k --> c'.
+Proof.
+  destruct k; simpl.
+  - exact STEP.
+  - eapply cps_cont_to_seq.
+    simpl.
+    exact STEP.
+Qed.
+
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
+Proof.
+  revert c3 k STEP.
+  induction EXEC; intros c3 k STEP.
+  - exact STEP.
+  - eapply cps_Assign.
+    + exact VAL.
+    + eapply cps_skip_to_cont. exact STEP.
+  - eapply cps_Read.
+    eapply cps_skip_to_cont. exact STEP.
+  - eapply cps_Write.
+    + exact VAL.
+    + eapply cps_skip_to_cont. exact STEP.
+  - apply cps_Seq.
+    apply IHEXEC1.
+    apply cps_Skip.
+    apply cps_stmt_to_empty_cont.
+    apply IHEXEC2.
+    exact STEP.
+  - eapply cps_If_True.
+    + exact CVAL.
+    + apply IHEXEC. exact STEP.
+  - eapply cps_If_False.
+    + exact CVAL.
+    + apply IHEXEC. exact STEP.
+  - eapply cps_While_True.
+    + exact CVAL.
+    + apply IHEXEC1.
+      apply cps_Skip.
+      apply cps_stmt_to_empty_cont.
+      apply IHEXEC2.
+      exact STEP.
+  - eapply cps_While_False.
+    + exact CVAL.
+    + eapply cps_skip_to_cont. exact STEP.
+Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
+Proof.
+  eapply bs_int_to_cps_int_cont.
+  - exact EXEC.
+  - apply cps_Skip.
+    constructor.
+Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
